@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "566392222908",
+    "project_id": "kraftsnknots-921a0",
+    "storage_bucket": "kraftsnknots-921a0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:566392222908:android:310d0f77777a2eed3f4cb9",
+        "android_client_info": {
+          "package_name": "com.kraftsnknots"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDydnrlR55YjhLOJXAXApsEJxYSfBP1PWQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:566392222908:android:eaa4af0dfb387fa63f4cb9",
+        "android_client_info": {
+          "package_name": "com.kraftsnknotsapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDydnrlR55YjhLOJXAXApsEJxYSfBP1PWQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
