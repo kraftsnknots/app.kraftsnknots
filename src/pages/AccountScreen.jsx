@@ -40,6 +40,7 @@ import EditProfile from "./EditProfile";
 import Modal from "react-native-modal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import LinearGradient from 'react-native-linear-gradient';
 
 export default function AccountScreen({ navigation }) {
   const app = getApp();
@@ -235,20 +236,24 @@ export default function AccountScreen({ navigation }) {
             </View>
           )}
 
-          <View style={styles.navbar}>
-            <TouchableOpacity style={{ width: "95%" }}>
+          <LinearGradient
+            colors={['#000', '#000']}
+            style={styles.navbar}>
+            <View
+              style={styles.navImgs}>
+
               <Image
-                source={require("../assets/images/knklogo4.png")} 
-                style={styles.logo}
+                source={require("../assets/images/knklogo4.png")}
+                style={styles.logoRight}
               />
-            </TouchableOpacity>
+            </View>
             <TouchableOpacity
               onPress={handleSingleLogoutPress}
               onLongPress={handleLogout}
             >
               <Image source={logoutlink} style={styles.back} />
             </TouchableOpacity>
-          </View>
+          </LinearGradient >
 
           <ScrollView
             style={styles.container}
@@ -530,14 +535,21 @@ const styles = StyleSheet.create({
   navbar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 25,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
+    paddingVertical: 5,
+    borderBottomWidth: 2,
     borderBottomColor: "#eee",
-    backgroundColor: "#000",
     width: "100%",
-    paddingTop: 55,
+    paddingTop: 45,
   },
+  navImgs: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+
+  },
+  logoRight: { width: 250, height: 70, objectFit: 'contain' },
+
   logo: { width: 120, height: 50 },
   back: { width: 30, height: 30 },
   container: { flex: 1, backgroundColor: "#fff" },
@@ -559,9 +571,9 @@ const styles = StyleSheet.create({
     padding: 5,
     zIndex: 9
   },
-  changeDp:{
-    width:50,
-    height:40
+  changeDp: {
+    width: 50,
+    height: 40
   },
   details: {
     bottom: 125,
