@@ -45,7 +45,7 @@ export default function Checkout({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [shippingTypes, setShippingTypes] = useState({ standard: 300, express: 1200 });
   const [selectedShippingType, setSelectedShippingType] = useState("standard");
-  const logoHeight = Platform.OS === "ios" ? 340 : 140;
+  const logoHeight = Platform.OS === "ios" ? 340 : 250;
   const [isDevelopment, setIsDevelopment] = useState(null);
   const [customerInfo, setCustomerInfo] = useState({
     email: "",
@@ -55,7 +55,6 @@ export default function Checkout({ navigation }) {
     notes: "",
   });
 
-  Alert.alert(isDevelopment);
 
   // New states for addresses modal and list handling
   const [modalVisible, setModalVisible] = useState(false);
@@ -326,7 +325,7 @@ export default function Checkout({ navigation }) {
 
       // ✅ Create Razorpay Order from Cloud Function (v2 endpoint)
       const response = await axios.post(
-        "https://us-central1-ujaas-aroma.cloudfunctions.net/createRazorpayOrder",
+        "https://us-central1-kraftsnknots-921a0.cloudfunctions.net/createRazorpayOrder",
         { amount: total, receipt: `receipt_order_${Date.now()}` }
       );
 
@@ -334,12 +333,12 @@ export default function Checkout({ navigation }) {
 
       const options = {
         description: "Payment for your order",
-        image: "https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.appspot.com/o/logos%2FPicture1.png?alt=media",
+        image: "https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.appspot.com/o/logos%2FPicture1.png?alt=media",
         currency: order.currency,
         key: "rzp_test_RPpvui3mN5LNHr",
         amount: order.amount,
         order_id: order.id,
-        name: "Ujaas Aroma",
+        name: "Krafts  & Knots",
         prefill: {
           email: customerInfo.email,
           contact: customerInfo.phone,
@@ -392,7 +391,7 @@ export default function Checkout({ navigation }) {
 
             // ✅ Step 2: Generate Invoice + Send Email via Cloud Functions (v2)
             const invoiceRes = await axios.post(
-              "https://us-central1-ujaas-aroma.cloudfunctions.net/generateInvoicePDF",
+              "https://us-central1-kraftsnknots-921a0.cloudfunctions.net/generateInvoicePDF",
               { orderDetails: { ...safeOrderDetails, orderNumber } }
             );
 
@@ -407,7 +406,7 @@ export default function Checkout({ navigation }) {
 
             // ✅ Step 4: Send Email Confirmation
             await axios.post(
-              "https://us-central1-ujaas-aroma.cloudfunctions.net/sendOrderConfirmation",
+              "https://us-central1-kraftsnknots-921a0.cloudfunctions.net/sendOrderConfirmation",
               { orderDetails: { ...safeOrderDetails, invoiceUrl: pdfUrl } }
             );
 
@@ -515,7 +514,7 @@ export default function Checkout({ navigation }) {
 
   //     // ✅ Step 2: Generate PDF via Cloud Function
   //     const invoiceRes = await axios.post(
-  //       "https://us-central1-ujaas-aroma.cloudfunctions.net/generateInvoicePDF",
+  //       "https://us-central1-kraftsnknots-921a0.cloudfunctions.net/generateInvoicePDF",
   //       { orderDetails: { ...safeOrderDetails, orderNumber } }
   //     );
 
@@ -530,7 +529,7 @@ export default function Checkout({ navigation }) {
 
   //     // ✅ Step 4: Send Email Confirmation
   //     await axios.post(
-  //       "https://us-central1-ujaas-aroma.cloudfunctions.net/sendOrderConfirmation",
+  //       "https://us-central1-kraftsnknots-921a0.cloudfunctions.net/sendOrderConfirmation",
   //       { orderDetails: { ...safeOrderDetails, invoiceUrl: pdfUrl } }
   //     );
 
@@ -615,9 +614,9 @@ export default function Checkout({ navigation }) {
               html: `
           <html>
             <body style="margin-top:70%; padding:10; text-align:center;">
-              <img src="https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/logos%2Flogo2.png?alt=media&token=192d3c40-2147-4053-b692-30db63606a9a" 
+              <img src="https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/logos%2Fknklogo1.png?alt=media&token=d0f6a710-3de5-41d9-a96e-9f1a6741d0da" 
                    style="width:100%; height:${logoHeight}px;"/>
-              <img src="https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/logos%2Floading.gif?alt=media&token=0c797fd8-e139-4c6e-8c6b-bb850a692062" 
+              <img src="https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/logos%2Floading.gif?alt=media&token=9c00a9a5-76ab-4203-b4d2-5570a671ca77" 
                    style="width:100px; height:100px; margin-top:50px;"/>
             </body>
           </html>

@@ -79,7 +79,7 @@ export default function AccountScreen({ navigation }) {
                 email: data.email || currentUser.email || "",
                 photoURL: data.photoURL ?? currentUser.photoURL ?? null,
               });
-              setIsAdmin(data.admin === 1);
+              setIsAdmin(data.admin === true);
             }
             setLoading(false);
           },
@@ -238,7 +238,7 @@ export default function AccountScreen({ navigation }) {
           <View style={styles.navbar}>
             <TouchableOpacity style={{ width: "95%" }}>
               <Image
-                source={require("../assets/images/logo2.png")}
+                source={require("../assets/images/knklogo4.png")} 
                 style={styles.logo}
               />
             </TouchableOpacity>
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    backgroundColor: "#fff",
+    backgroundColor: "#000",
     width: "100%",
     paddingTop: 55,
   },
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   back: { width: 30, height: 30 },
   container: { flex: 1, backgroundColor: "#fff" },
   header: { backgroundColor: "#fff", alignItems: "center" },
-  profileWrapper: { position: "relative", width: '100%', height: '500' },
+  profileWrapper: { position: "relative", width: '100%', height: '250' },
   avatar: {
     width: '100%',
     height: '700',
