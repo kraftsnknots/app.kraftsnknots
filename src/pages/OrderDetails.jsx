@@ -112,7 +112,7 @@ export default function OrderDetails({ route, navigation }) {
             setResending(true);
             const pdfUrl = order.invoiceUrl;
             await axios.post(
-                "https://us-central1-ujaas-aroma.cloudfunctions.net/sendOrderConfirmation",
+                "https://us-central1-kraftsnknots-921a0.cloudfunctions.net/sendOrderConfirmation",
                 { orderDetails: { ...order, invoiceUrl: pdfUrl } }
             );
             Alert.alert("Success", `Email has been resent to ${order.customerInfo.email}.`);

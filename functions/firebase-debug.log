@@ -1,0 +1,16 @@
+[debug] [2025-12-28T04:06:11.889Z] ----------------------------------------------------------------------
+[debug] [2025-12-28T04:06:11.892Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\techs\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions:generateInvoicePDF
+[debug] [2025-12-28T04:06:11.893Z] CLI Version:   15.1.0
+[debug] [2025-12-28T04:06:11.893Z] Platform:      win32
+[debug] [2025-12-28T04:06:11.893Z] Node Version:  v22.12.0
+[debug] [2025-12-28T04:06:11.894Z] Time:          Sat Dec 27 2025 23:06:11 GMT-0500 (Eastern Standard Time)
+[debug] [2025-12-28T04:06:11.894Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-12-28T04:06:14.065Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-28T04:06:14.066Z] > authorizing via signed-in user (ujaasaroma@gmail.com)
+[debug] [2025-12-28T04:06:14.066Z] [iam] checking project kraftsnknots-921a0 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2025-12-28T04:06:14.067Z] Checked if tokens are valid: false, expires at: 1766893188792
+[debug] [2025-12-28T04:06:14.067Z] Checked if tokens are valid: false, expires at: 1766893188792
+[debug] [2025-12-28T04:06:14.068Z] > refreshing access token with scopes: []
+[debug] [2025-12-28T04:06:14.069Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-28T04:06:14.069Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]

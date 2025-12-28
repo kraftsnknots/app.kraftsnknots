@@ -5,7 +5,7 @@ const nodemailer = require("nodemailer");
 const PDFDocument = require("pdfkit");
 const { v4: uuidv4 } = require("uuid");
 const config = require("./config");
-const { onRequest } = require("firebase-functions/v2/https");
+const cors = require("cors")({ origin: true });
 const { getStorage } = require("firebase-admin/storage");
 
 if (!admin.apps.length) {
@@ -23,26 +23,28 @@ const razorpay = new Razorpay({
 });
 
 exports.createRazorpayOrder = functions.https.onRequest(async (req, res) => {
-  try {
-    const { amount, currency = "INR", receipt } = req.body;
+  cors(req, res, async () => {
+    try {
+      const { amount, currency = "INR", receipt } = req.body;
 
-    if (!amount || !receipt) {
-      return res.status(400).json({ error: "Missing amount or receipt" });
+      if (!amount || !receipt) {
+        return res.status(400).json({ error: "Missing amount or receipt" });
+      }
+
+      const order = await razorpay.orders.create({
+        amount: Math.round(amount * 100),
+        currency,
+        receipt,
+        payment_capture: 1,
+      });
+
+      console.log("✅ Razorpay order created:", order);
+      return res.status(200).json(order);
+    } catch (error) {
+      console.error("❌ Razorpay order creation failed:", error);
+      return res.status(500).json({ error: "Failed to create order" });
     }
-
-    const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100),
-      currency,
-      receipt,
-      payment_capture: 1,
-    });
-
-    console.log("✅ Razorpay order created:", order);
-    return res.status(200).json(order);
-  } catch (error) {
-    console.error("❌ Razorpay order creation failed:", error);
-    return res.status(500).json({ error: "Failed to create order" });
-  }
+  });
 });
 
 // ======================================================
@@ -50,6 +52,7 @@ exports.createRazorpayOrder = functions.https.onRequest(async (req, res) => {
 // ======================================================
 
 async function generatePDFBuffer(orderDetails) {
+
   return new Promise(async (resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 50, size: 'A4' });
@@ -60,7 +63,7 @@ async function generatePDFBuffer(orderDetails) {
 
       // ✅ Fetch the logo image as a buffer
       const logoUrl =
-        "https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/logos%2Flogo2.png?alt=media&token=192d3c40-2147-4053-b692-30db63606a9a";
+        "https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/logos%2Fknklogo1.png?alt=media&token=d0f6a710-3de5-41d9-a96e-9f1a6741d0da";
       const logoRes = await fetch(logoUrl);
       const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
 
@@ -80,8 +83,8 @@ async function generatePDFBuffer(orderDetails) {
       const yStart = 170;
       doc.fontSize(10).font("Helvetica-Bold").text("Date:", 50, yStart);
       doc.font("Helvetica").text(formattedDate, 80, yStart);
-      doc.fontSize(10).font("Helvetica-Bold").text("Order No.", 450, yStart);
-      doc.fontSize(10).font("Helvetica").text(`${orderDetails.orderNumber}`, 500, yStart);
+      doc.fontSize(10).font("Helvetica-Bold").text("Order No.", 440, yStart);
+      doc.fontSize(10).font("Helvetica").text(`${orderDetails.orderNumber}`, 490, yStart);
       doc.moveDown();
 
       doc.font("Helvetica-Bold").text("Billed to:", 50, 230);
@@ -92,10 +95,10 @@ async function generatePDFBuffer(orderDetails) {
       doc.text(`${customer.email || ""}`, 50, 290);
 
       doc.font("Helvetica-Bold").text("From:", 350, 230);
-      doc.font("Helvetica").text("Ujaas Aroma", 350, 245);
+      doc.font("Helvetica").text("Krafts & Knots", 350, 245);
       doc.text("124-D, Ittina Abha, Munnekolal, Bengaluru", 350, 260);
       doc.text("Karnataka, 560037, India", 350, 275);
-      doc.text("info@ujaasaroma.com", 350, 290);
+      doc.text("info@kraftsnknots.com", 350, 290);
 
       // === TABLE HEAD ===
       const tableTop = 320;
@@ -169,7 +172,7 @@ async function generatePDFBuffer(orderDetails) {
 
       // ✅ Fetch the logo image as a buffer
       const bottomImg =
-        "https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/extra_required_images%2FScreenshot%202025-10-12%20at%2012.25.09%E2%80%AFPM.png?alt=media&token=80bd1de4-7e01-418f-807e-ff4a087d9a26";
+        "https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/extra_required_images%2Finvoice_design.png?alt=media&token=14a7ea6b-407f-4507-b169-9d8c3066ff02";
       const bottomImgRes = await fetch(bottomImg);
       const bottomImgBuffer = Buffer.from(await bottomImgRes.arrayBuffer());
 
@@ -179,7 +182,7 @@ async function generatePDFBuffer(orderDetails) {
       doc.image(bottomImgBuffer, 0, footerY, { width: 600 });
       doc.restore();
 
-      // doc.fontSize(9).fillColor("#666").text("© Ujaas Aroma — Wellness for your senses", 0, 770, {
+      // doc.fontSize(9).fillColor("#666").text("© Krafts & Knots — Wellness for your senses", 0, 770, {
       //   align: "center",
       //   width: 600,
       // });
@@ -195,59 +198,62 @@ async function generatePDFBuffer(orderDetails) {
 // ======================================================
 // 🔹 2.2 Cloud Function to Generate + Upload (Securely)
 // ======================================================
-exports.generateInvoicePDF = onRequest({ region: "us-central1" }, async (req, res) => {
-  try {
-    const payload = req.body || {};
-    const orderDetails = payload.orderDetails || payload.order || payload;
+exports.generateInvoicePDF = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      const payload = req.body || {};
+      console.log(payload);
 
-    if (!orderDetails || typeof orderDetails !== "object") {
-      return res.status(400).json({ error: "Missing or invalid orderDetails" });
+      const orderDetails = payload.orderDetails || payload.order || payload;
+
+      if (!orderDetails || typeof orderDetails !== "object") {
+        return res.status(400).json({ error: "Missing or invalid orderDetails" });
+      }
+
+      const userId = orderDetails.userId || orderDetails.customerInfo?.uid;
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId in orderDetails" });
+      }
+
+      if (!Array.isArray(orderDetails.items) && Array.isArray(orderDetails.cartItems)) {
+        orderDetails.items = orderDetails.cartItems.map((ci) => ({
+          title: ci.title || ci.name || ci.productId || "Item",
+          quantity: ci.quantity ?? ci.qty ?? 1,
+          price: Number(ci.price ?? 0),
+          options: ci.options || [],
+        }));
+      }
+
+      const toEmail = orderDetails.customerInfo?.email || orderDetails.email || "N/A";
+      const pdfBuffer = await generatePDFBuffer(orderDetails, toEmail);
+
+      const filePath = `invoices/${userId}/invoice-${orderDetails.orderNumber}-${uuidv4()}.pdf`;
+      const file = bucket.file(filePath);
+
+      // Save buffer securely (no makePublic)
+      await file.save(pdfBuffer, {
+        metadata: { contentType: "application/pdf" },
+        resumable: false,
+      });
+
+
+      return res.status(200).json({
+        message: "✅ Secure PDF generated and uploaded successfully.",
+        storagePath: filePath,
+      });
+    } catch (error) {
+      console.error("❌ PDF generation/upload failed:", error);
+      return res.status(500).json({ error: error.message || "Internal Server Error" });
     }
-
-    const userId = orderDetails.userId || orderDetails.customerInfo?.uid;
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId in orderDetails" });
-    }
-
-    if (!Array.isArray(orderDetails.items) && Array.isArray(orderDetails.cartItems)) {
-      orderDetails.items = orderDetails.cartItems.map((ci) => ({
-        title: ci.title || ci.name || ci.productId || "Item",
-        quantity: ci.quantity ?? ci.qty ?? 1,
-        price: Number(ci.price ?? 0),
-        options: ci.options || [],
-      }));
-    }
-
-    const toEmail = orderDetails.customerInfo?.email || orderDetails.email || "N/A";
-    const pdfBuffer = await generatePDFBuffer(orderDetails, toEmail);
-
-    const filePath = `invoices/${userId}/invoice-${orderDetails.orderNumber}-${uuidv4()}.pdf`;
-    const file = bucket.file(filePath);
-
-    // Save buffer securely (no makePublic)
-    await file.save(pdfBuffer, {
-      metadata: { contentType: "application/pdf" },
-      resumable: false,
-    });
-
-
-    return res.status(200).json({
-      message: "✅ Secure PDF generated and uploaded successfully.",
-      storagePath: filePath,
-    });
-  } catch (error) {
-    console.error("❌ PDF generation/upload failed:", error);
-    return res.status(500).json({ error: error.message || "Internal Server Error" });
-  }
+  });
 });
 
 // ======================================================
 // 🔹 3. Order Email Sending Function (using Nodemailer)
 // ======================================================
 
-exports.sendOrderConfirmation = onRequest(
-  { region: "us-central1" },
-  async (req, res) => {
+exports.sendOrderConfirmation = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
     try {
       const { orderDetails } = req.body;
 
@@ -287,13 +293,13 @@ exports.sendOrderConfirmation = onRequest(
 
       const htmlBody = `
       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8f8f8; padding: 20px;">
-        <div style="max-width: 600px; margin: auto; background-image: url('https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/extra_required_images%2Fbg-white.png?alt=media&token=9028df4e-284e-4da0-ab0f-eea38165efe7'); background-repeat: repeat; background-size: contain;  border-radius: 12px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">
+        <div style="max-width: 600px; margin: auto; background-image: url('https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/extra_required_images%2Fbg-white.png?alt=media&token=22faa326-930b-4ac7-ab1e-dfc86b1692db'); background-repeat: repeat; background-size: contain;  border-radius: 12px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">
           
           <!-- Header -->
           <div style="text-align: center; padding: 20px 20px;">
             <img 
-              src="https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/logos%2Flogo2.png?alt=media&token=192d3c40-2147-4053-b692-30db63606a9a" 
-              alt="Ujaas Aroma Logo" 
+              src="https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/logos%2Fknklogo1.png?alt=media&token=d0f6a710-3de5-41d9-a96e-9f1a6741d0da" 
+              alt="Krafts & Knots Logo" 
               style="width: 250px; height: auto; margin-bottom: 10px;"
             />
             <p style="color: #888;">Thank you for your order!</p>
@@ -304,7 +310,7 @@ exports.sendOrderConfirmation = onRequest(
             <h2 style="color: #333; margin-bottom: 10px; text-align: center">Order Confirmation</h2>
             <p style="color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 20px; text-align:justify">
               Hi <strong>${orderDetails.customerInfo.name}</strong>,<br>
-              We're delighted to confirm your order placed on <strong>${orderDetails.orderDate}</strong>.<br>
+              We're delighted to confirm your order placed on <strong>${ordDate}</strong>.<br>
               Our team is working very hard to process your order asap as currently we are running at the capacity. <br>
               Soon you will receive another email when your order will be on shipping.
             </p>
@@ -353,9 +359,9 @@ exports.sendOrderConfirmation = onRequest(
 
             ${customerNotes}
             <p style="margin-top: 35px; color: #666; font-size: 14px; line-height: 1.6; text-align: justify">
-              We hope your Ujaas Aroma experience inspires tranquility and elegance in every moment.  
-              For personalized assistance or to share your thoughts, please connect with us by visiting <a href="https://ujaasaroma.com/contact" style="color: #d17b49; text-decoration: none;">www.ujaasaroma.com/contact</a>.
-              or at support@ujaasaroma.com
+              We hope your Krafts & Knots experience inspires tranquility and elegance in every moment.  
+              For personalized assistance or to share your thoughts, please connect with us by visiting <a href="https://kraftsnknots.com/contact" style="color: #d17b49; text-decoration: none;">www.kraftsnknots.com/contact</a>.
+              or at support@kraftsnknots.com
             </p>
 
             <p style="margin-top: 15px; color: #666; font-size: 14px; line-height: 1.6; text-align: justify">
@@ -364,12 +370,12 @@ exports.sendOrderConfirmation = onRequest(
           </div>
 
           <!-- Footer -->
-          <div style="background-color: #f9f4ef; background-image: url('https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/extra_required_images%2Fbg-beige.png?alt=media&token=bce13ebc-283d-43b7-8bbd-171df2d73dbd'); background-repeat: repeat; background-size: contain; text-align: center; padding: 20px;">
+          <div style="background-color: #f9f4ef; background-image: url('https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/extra_required_images%2Fbg-beige.png?alt=media&token=bc999922-5644-4369-a1cb-409375aba403'); background-repeat: repeat; background-size: contain; text-align: center; padding: 20px;">
             <p style="color: #777; font-size: 13px; margin: 0;">
-              © ${new Date().getFullYear()} Ujaas Aroma · All rights reserved
+              © ${new Date().getFullYear()} Krafts & Knots · All rights reserved
             </p>
             <p style="color: #aaa; font-size: 12px; margin-top: 6px;">
-              Crafted with love 💛 for natural living
+              Crafted with love 💛 for making memories.
             </p>
           </div>
         </div>
@@ -378,9 +384,9 @@ exports.sendOrderConfirmation = onRequest(
 
       // ✅ Mail Options
       const mailOptions = {
-        from: `"Ujaas Aroma" <${config.smtpOrder.auth.user}>`,
+        from: `"Krafts & Knots" <${config.smtpOrder.auth.user}>`,
         to: orderDetails.customerInfo.email,
-        subject: `Your Ujaas Aroma Order ${orderDetails.orderNumber} Confirmation`,
+        subject: `Your Krafts & Knots Order ${orderDetails.orderNumber} Confirmation`,
         html: htmlBody,
       };
 
@@ -393,7 +399,8 @@ exports.sendOrderConfirmation = onRequest(
       res.status(500).send({ success: false, message: error.message });
     }
   }
-);
+  );
+});
 
 
 // ======================================================
@@ -401,9 +408,8 @@ exports.sendOrderConfirmation = onRequest(
 // ======================================================
 
 
-exports.sendContactFormConfirmation = onRequest(
-  { region: "us-central1" },
-  async (req, res) => {
+exports.sendContactFormConfirmation = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
     try {
       const { formDetails } = req.body;
 
@@ -427,7 +433,7 @@ exports.sendContactFormConfirmation = onRequest(
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>New Contact Message - Ujaas Aroma</title>
+  <title>New Contact Message - Krafts & Knots</title>
   <style>
     body {
       background: #f7f9fa;
@@ -444,7 +450,7 @@ exports.sendContactFormConfirmation = onRequest(
       box-shadow: 0 2px 8px rgba(30, 40, 90, 0.09);
     }
     .header {
-      background: linear-gradient(120deg, #36d1c4 0%, #6ab7f8 100%);
+      background: #000;
       color: #fff;
       text-align: center;
       padding: 32px 24px 16px 24px;
@@ -490,7 +496,7 @@ exports.sendContactFormConfirmation = onRequest(
       color: #346;
     }
     .footer {
-      background: #f4f6fc;
+      background: #000;
       text-align: center;
       padding: 20px 24px 18px 24px;
       font-size: 0.93em;
@@ -503,7 +509,7 @@ exports.sendContactFormConfirmation = onRequest(
     }
     .footer .company {
       font-weight: 600;
-      color: #176497;
+      color: #0798f8ff;
     }
     .footer .tagline {
       color: #edae27;
@@ -520,7 +526,7 @@ exports.sendContactFormConfirmation = onRequest(
 <body>
   <div class="container">
     <div class="header">
-      <img src="https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/logos%2Flogo2.png?alt=media&token=192d3c40-2147-4053-b692-30db63606a9a" alt="Ujaas Aroma Logo">
+      <img src="https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/logos%2Fknklogo1.png?alt=media&token=d0f6a710-3de5-41d9-a96e-9f1a6741d0da" alt="Krafts & Knots Logo">
       <h1>Hi, Administrator</h1>
       <p>We have an incoming contact message for you.<br>
       See the details below.</p>
@@ -554,12 +560,12 @@ exports.sendContactFormConfirmation = onRequest(
     </div>
 
     <div class="footer">
-      <img src="https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/logos%2Flogo2.png?alt=media&token=192d3c40-2147-4053-b692-30db63606a9a" alt="Ujaas Aroma Logo">
-      <span class="company">Ujaas Aroma</span>
-      <div class="tagline">Crafted with love 💛 for natural living</div>
+      <img src="https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/logos%2Fknklogo1.png?alt=media&token=d0f6a710-3de5-41d9-a96e-9f1a6741d0da" alt="Krafts & Knots Logo">
+      <span class="company">Krafts & Knots</span>
+      <div class="tagline">Crafted with love 💛 to make memories</div>
       <div>
-        <span class="contact">Email: <a href="mailto:support@ujaasaroma.com">support@ujaasaroma.com</a></span> |
-        <span class="contact">Website: <a href="https://www.ujaasaroma.com" target="_blank">www.ujaasaroma.com</a></span>
+        <span class="contact">Email: <a href="mailto:support@kraftsnknots.com">support@kraftsnknots.com</a></span> |
+        <span class="contact">Website: <a href="https://www.kraftsnknots.com" target="_blank">www.kraftsnknots.com</a></span>
       </div>
     </div>
   </div>
@@ -569,8 +575,8 @@ exports.sendContactFormConfirmation = onRequest(
 
       // ✅ Mail Options
       const adminMail = {
-        from: `"Ujaas Aroma App" <${config.smtpContactForm.auth.user}>`,
-        to: "mobileapp_contact_form@ujaasaroma.com",
+        from: `"Krafts & Knots App" <${config.smtpContactForm.auth.user}>`,
+        to: "contact_form@ujaasaroma.com",
         subject: `📩 New Contact Message from ${formDetails.name}`,
         html: htmlAdminBody,
       };
@@ -581,7 +587,7 @@ exports.sendContactFormConfirmation = onRequest(
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>New Contact Message - Ujaas Aroma</title>
+  <title>New Contact Message - Krafts & Knots</title>
   <style>
     body {
       background: #f7f9fa;
@@ -598,7 +604,7 @@ exports.sendContactFormConfirmation = onRequest(
       box-shadow: 0 2px 8px rgba(30, 40, 90, 0.09);
     }
     .header {
-      background: linear-gradient(120deg, #36d1c4 0%, #6ab7f8 100%);
+      background: #000;
       color: #fff;
       text-align: center;
       padding: 32px 24px 16px 24px;
@@ -643,7 +649,7 @@ exports.sendContactFormConfirmation = onRequest(
       color: #346;
     }
     .footer {
-      background: #f4f6fc;
+      background: #000;
       text-align: center;
       padding: 20px 24px 18px 24px;
       font-size: 0.93em;
@@ -673,7 +679,7 @@ exports.sendContactFormConfirmation = onRequest(
 <body>
   <div class="container">
     <div class="header">
-      <img src="https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/logos%2Flogo2.png?alt=media&token=192d3c40-2147-4053-b692-30db63606a9a" alt="Ujaas Aroma Logo">
+      <img src="https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/logos%2Fknklogo1.png?alt=media&token=d0f6a710-3de5-41d9-a96e-9f1a6741d0da" alt="Krafts & Knots Logo">
       <h1>Hello, ${formDetails.name}</h1>
       <p>We have received your message. Our team will get back to you within 24-48 hours.<br>
       See below the details of your Query.</p>
@@ -707,11 +713,11 @@ exports.sendContactFormConfirmation = onRequest(
     </div>
 
     <div class="footer">
-      <img src="https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/logos%2Flogo2.png?alt=media&token=192d3c40-2147-4053-b692-30db63606a9a" alt="Ujaas Aroma Logo">
-      <div class="tagline">Crafted with love 💛 for natural living</div>
+      <img src="https://firebasestorage.googleapis.com/v0/b/kraftsnknots-921a0.firebasestorage.app/o/logos%2Fknklogo1.png?alt=media&token=d0f6a710-3de5-41d9-a96e-9f1a6741d0da" alt="Krafts & Knots Logo">
+      <div class="tagline">Crafted with love 💛 for making memories.</div>
       <div>
-        <span class="contact">Email: <a href="mailto:support@ujaasaroma.com">support@ujaasaroma.com</a></span> |
-        <span class="contact">Website: <a href="https://www.ujaasaroma.com" target="_blank">www.ujaasaroma.com</a></span>
+        <span class="contact">Email: <a href="mailto:support@kraftsnknots.com">support@kraftsnknots.com</a></span> |
+        <span class="contact">Website: <a href="https://www.kraftsnknots.com" target="_blank">www.kraftsnknots.com</a></span>
       </div>
     </div>
   </div>
@@ -719,7 +725,7 @@ exports.sendContactFormConfirmation = onRequest(
 </html>`;
 
       const userMail = {
-        from: `"Ujaas Aroma App" <${config.smtpContactForm.auth.user}>`,
+        from: `"Krafts & Knots App" <${config.smtpContactForm.auth.user}>`,
         to: formDetails.email,
         subject: `📩 New Contact Message from ${formDetails.name}`,
         html: htmlUserBody,
@@ -737,3 +743,4 @@ exports.sendContactFormConfirmation = onRequest(
       res.status(500).send({ success: false, message: error.message });
     }
   });
+});

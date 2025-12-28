@@ -17,12 +17,13 @@ module.exports = {
     host: "smtp.hostinger.com",
     port: 465,
     secure: true,
-    auth: { 
+    auth: {
       user: "support@ujaasaroma.com",
       pass: "Sonalika@1995", // ⚠️ keep safe
     },
   },
 };
+
 
 
 

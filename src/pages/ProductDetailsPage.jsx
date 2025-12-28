@@ -214,12 +214,14 @@ export default function ProductDetailsPage({ navigation }) {
               </View>
               <TextInput
                 placeholder="Name"
+                placeholderTextColor="#C0C0C0"
                 style={styles.input}
                 value={reviewForm.name}
                 onChangeText={(text) => setReviewForm({ ...reviewForm, name: text })}
               />
               <TextInput
                 placeholder="Email"
+                placeholderTextColor="#C0C0C0"
                 style={styles.input}
                 keyboardType="email-address"
                 value={reviewForm.email}
@@ -227,6 +229,7 @@ export default function ProductDetailsPage({ navigation }) {
               />
               <TextInput
                 placeholder="Write your review"
+                placeholderTextColor="#C0C0C0"
                 style={[styles.input, { height: 100 }]}
                 multiline
                 maxLength={MAX_REVIEW_LENGTH}
