@@ -35,7 +35,7 @@ import {
   getDownloadURL,
   putFile,
 } from "@react-native-firebase/storage";
-import * as ImagePicker from "react-native-image-picker";
+import ImageCropPicker from "react-native-image-crop-picker";
 import EditProfile from "./EditProfile";
 import Modal from "react-native-modal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -103,71 +103,68 @@ export default function AccountScreen({ navigation }) {
 
 
   const launchCameraOrGallery = async (type) => {
-    try {
-      const options = {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    let image;
+
+    if (type === "camera") {
+      image = await ImageCropPicker.openCamera({
+        width: 800,
+        height: 800,
+        cropping: true,
+        cropperCircleOverlay: false, // set true if you want circular crop
+        compressImageQuality: 0.8,
         mediaType: "photo",
-        quality: 0.8,
-        saveToPhotos: true,
-        includeBase64: false,
-      };
-
-      const callback = async (response) => {
-        if (response.didCancel) return;
-        if (response.errorCode) {
-          console.warn("Picker error:", response.errorMessage);
-          Alert.alert("Error", "Failed to open camera/gallery. Please try again.");
-          return;
-        }
-
-        const asset = response.assets?.[0];
-        if (!asset?.uri) return;
-
-        try {
-          const currentUser = auth.currentUser;
-          if (!currentUser) return;
-
-          setUploading(true);
-
-          // ✅ Upload image
-          const reference = ref(
-            storage,
-            `userPictures/${currentUser.uid}/${currentUser.uid}.jpg`
-          );
-          await putFile(reference, asset.uri);
-
-          // ✅ Get download URL
-          const downloadURL = await getDownloadURL(reference);
-
-          // ✅ Update Firebase Auth + Firestore
-          await updateProfile(currentUser, { photoURL: downloadURL });
-          await setDoc(
-            doc(firestore, "users", currentUser.uid),
-            { photoURL: downloadURL },
-            { merge: true }
-          );
-
-          // ✅ Update local UI
-          setUserData((prev) => ({ ...prev, photoURL: downloadURL }));
-        } catch (err) {
-          console.error("Upload error:", err);
-          Alert.alert("Error", "Failed to upload photo. Please try again.");
-        } finally {
-          setUploading(false);
-        }
-      };
-
-      // ✅ Run picker safely with delay (avoid modal conflict)
-      setTimeout(() => {
-        if (type === "camera") {
-          ImagePicker.launchCamera(options, callback);
-        } else {
-          ImagePicker.launchImageLibrary(options, callback);
-        }
-      }, 400);
-    } catch (error) {
-      console.error("Picker launch failed:", error);
+      });
+    } else {
+      image = await ImageCropPicker.openPicker({
+        width: 800,
+        height: 800,
+        cropping: true,
+        cropperCircleOverlay: false,
+        compressImageQuality: 0.8,
+        mediaType: "photo",
+      });
     }
-  };
+
+    if (!image?.path) return;
+
+    setUploading(true);
+
+    // ✅ Firebase Storage path
+    const reference = ref(
+      storage,
+      `userPictures/${currentUser.uid}/${currentUser.uid}.jpg`
+    );
+
+    // ✅ Upload cropped image
+    await putFile(reference, image.path);
+
+    // ✅ Get download URL
+    const downloadURL = await getDownloadURL(reference);
+
+    // ✅ Update Auth + Firestore
+    await updateProfile(currentUser, { photoURL: downloadURL });
+    await setDoc(
+      doc(firestore, "users", currentUser.uid),
+      { photoURL: downloadURL },
+      { merge: true }
+    );
+
+    // ✅ Update UI instantly
+    setUserData((prev) => ({ ...prev, photoURL: downloadURL }));
+  } catch (error) {
+    if (error?.code !== "E_PICKER_CANCELLED") {
+      console.error("Crop/upload error:", error);
+      Alert.alert("Error", "Image upload failed. Please try again.");
+    }
+  } finally {
+    setUploading(false);
+  }
+};
+
 
   const handleSingleLogoutPress = () => {
     setLogoutlink(require("../assets/icons/logout_black.png"));
@@ -247,12 +244,6 @@ export default function AccountScreen({ navigation }) {
                 style={styles.logoRight}
               />
             </View>
-            <TouchableOpacity
-              onPress={handleSingleLogoutPress}
-              onLongPress={handleLogout}
-            >
-              <Image source={logoutlink} style={styles.back} />
-            </TouchableOpacity>
           </LinearGradient >
 
           <ScrollView
@@ -435,6 +426,17 @@ export default function AccountScreen({ navigation }) {
                   </TouchableOpacity>
                 </>
               )}
+              <TouchableOpacity
+                style={styles.option}
+                onPress={handleSingleLogoutPress}
+                onLongPress={handleLogout}
+              >
+                <Image
+                  source={logoutlink}
+                  style={styles.optionIcon}
+                />
+                <Text style={styles.optionText}>Logout</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
 
@@ -554,13 +556,13 @@ const styles = StyleSheet.create({
   back: { width: 30, height: 30 },
   container: { flex: 1, backgroundColor: "#fff" },
   header: { backgroundColor: "#fff", alignItems: "center" },
-  profileWrapper: { position: "relative", width: '100%', height: '250' },
+  profileWrapper: { position: "relative", width: '100%', height: '450' },
   avatar: {
     width: '100%',
-    height: '700',
+    height: 450,
     borderColor: "#eee",
     borderStyle: "solid",
-    resizeMode: 'cover'
+    resizeMode: 'contain'
   },
   cameraIcon: {
     position: "absolute",

@@ -40,6 +40,8 @@ export default function ProductDetailsPage({ navigation }) {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedColor, setSelectedColor] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState();
+  console.log(selectedProduct);
 
   // Reviews state
   const [reviews, setReviews] = useState([]);
@@ -76,6 +78,7 @@ export default function ProductDetailsPage({ navigation }) {
         if (docSnap.exists) {
           const data = docSnap.data();
           setProduct({ id: docSnap.id, ...data });
+          setSelectedProduct(data.images[0])
           if (data.colors?.length > 0) setSelectedColor(data.colors[0]);
         } else setProduct(null);
         setLoading(false);
@@ -285,7 +288,7 @@ export default function ProductDetailsPage({ navigation }) {
 
       {/* Navbar */}
       <View style={styles.navbar}>
-        <TouchableOpacity
+        <TouchableOpacity style={styles.backWrapper}
           onPress={() => {
             if (pagelink === "MainScreen") navigation.goBack();
             else if (pagelink === "WishlistScreen")
@@ -293,34 +296,32 @@ export default function ProductDetailsPage({ navigation }) {
             else navigation.goBack();
           }}
         >
-          <Image source={require("../assets/icons/back-icon.png")} style={styles.back} />
+          <Image source={require("../assets/icons/back-grey.png")} style={styles.back} />
         </TouchableOpacity>
-        <TouchableOpacity>
-          <Image source={require("../assets/images/logo2.png")} style={styles.logo} />
+        <TouchableOpacity style={styles.logoWrapper}>
+          <Image source={require("../assets/images/knklogo4.png")} style={styles.logo} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate("BottomNavigation", { screen: "Cart" })}>
-          <View>
-            <Image source={require("../assets/icons/cart-black.png")} style={styles.cart} />
-            {cartCount > 0 && (
-              <Animated.View
-                style={{
-                  position: "absolute",
-                  right: -6,
-                  top: -3,
-                  backgroundColor: "red",
-                  borderRadius: 10,
-                  paddingHorizontal: 5,
-                  minWidth: 18,
-                  height: 18,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  transform: [{ scale: cartAnim }],
-                }}
-              >
-                <Text style={{ color: "#fff", fontSize: 12, fontWeight: "bold" }}>{cartCount}</Text>
-              </Animated.View>
-            )}
-          </View>
+        <TouchableOpacity style={styles.cartWrapper} onPress={() => navigation.navigate("BottomNavigation", { screen: "Cart" })}>
+          <Image source={require("../assets/icons/cart-white.png")} style={styles.cart} />
+          {cartCount > 0 && (
+            <Animated.View
+              style={{
+                position: "absolute",
+                right: -6,
+                top: -3,
+                backgroundColor: "red",
+                borderRadius: 10,
+                paddingHorizontal: 5,
+                minWidth: 18,
+                height: 18,
+                justifyContent: "center",
+                alignItems: "center",
+                transform: [{ scale: cartAnim }],
+              }}
+            >
+              <Text style={{ color: "#fff", fontSize: 12, fontWeight: "bold" }}>{cartCount}</Text>
+            </Animated.View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -375,8 +376,8 @@ export default function ProductDetailsPage({ navigation }) {
                 </LinearGradient>
               ) : null}
             </View>
-            <Image source={{ uri: product.images[0] }} style={styles.mainImage} />
-            {product.colors && product.colors.length > 0 && (
+            <Image source={{ uri: selectedProduct }} style={styles.mainImage} />
+            {/* {product.colors && product.colors.length > 0 && (
               <View style={styles.colorRow}>
                 {product.colors.map((color) => (
                   <TouchableOpacity
@@ -390,25 +391,29 @@ export default function ProductDetailsPage({ navigation }) {
                   />
                 ))}
               </View>
-            )}
+            )} */}
             {product.images && (
               <FlatList
                 data={product.images}
                 horizontal
                 keyExtractor={(item, index) => index.toString()}
-                renderItem={({ item }) => <Image source={{ uri: item }} style={styles.thumbnail} />}
+                renderItem={({ item }) =>
+                  <TouchableOpacity onPress={() => setSelectedProduct(item)}>
+                    <Image source={{ uri: item }} style={styles.thumbnail} />
+                  </TouchableOpacity>}
                 contentContainerStyle={{ marginVertical: 15 }}
                 showsHorizontalScrollIndicator={false}
               />
             )}
             <View
               style={{
-                padding: 15,
+                paddingTop: 20,
                 flexDirection: "row",
-                justifyContent: "flex-end",
+                justifyContent: "space-between",
                 alignItems: "center",
               }}
             >
+              <Text style={styles.title}>{product.title}</Text>
               <TouchableOpacity onPress={() => toggleWishlist(product)}>
                 <Image
                   source={
@@ -420,7 +425,7 @@ export default function ProductDetailsPage({ navigation }) {
                 />
               </TouchableOpacity>
             </View>
-            <Text style={styles.title}>{product.title}</Text>
+
             <Text style={styles.description}>{product.description}</Text>
             <View
               style={{
@@ -468,22 +473,35 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 25,
-    paddingVertical: 15,
+    paddingVertical: 5,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    backgroundColor: "#fff",
+    backgroundColor: "#000",
     width: "100%",
-    paddingTop: 70,
+    paddingTop: 45,
   },
-  logo: { width: 120, height: 50 },
+  backWrapper: {
+    width: "10%"
+  },
+  logoWrapper: {
+    width: '80%',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  cartWrapper: {
+    width: '10%'
+  },
+  logo: { width: '70%', height: 70, objectFit: 'contain' },
   cart: { width: 30, height: 30 },
   back: { width: 30, height: 30 },
   container: { backgroundColor: "#fff", padding: 15 },
   mainImage: {
     width: "100%",
-    height: 250,
+    height: 300,
     alignSelf: "center",
     resizeMode: "contain",
+    marginVertical: 10
   },
   shimmerContainer: {
     padding: 15,
@@ -530,7 +548,7 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
     resizeMode: "contain",
   },
-  title: { fontSize: 18, fontWeight: "bold", marginVertical: 5 },
+  title: { fontSize: 24, fontWeight: "bold", marginVertical: 5 },
   description: {
     fontSize: 14,
     color: "#444",

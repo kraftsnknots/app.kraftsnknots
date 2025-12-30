@@ -14,7 +14,7 @@ import {
   KeyboardAvoidingView,
   Keyboard
 } from "react-native";
-import { launchImageLibrary } from "react-native-image-picker";
+import ImageCropPicker from "react-native-image-crop-picker";
 import { Picker } from "@react-native-picker/picker";
 import RNFS from "react-native-fs";
 
@@ -83,49 +83,88 @@ export default function AddProductPage({ navigation }) {
     return uri;
   };
 
-  const handleImagePick = () => {
-    launchImageLibrary({ mediaType: "photo", selectionLimit: 5 }, (response) => {
-      if (!response.didCancel && response.assets) {
-        const uris = response.assets.map((a) => a.uri);
-        setImages((prev) => [...prev, ...uris]);
+  const MAX_IMAGES = 5;
+
+  const handleImagePick = async () => {
+    try {
+      if (images.length >= MAX_IMAGES) {
+        Alert.alert("Limit Reached", "Maximum 5 images allowed");
+        return;
       }
-    });
+
+      const remaining = MAX_IMAGES - images.length;
+
+      // STEP 1: Pick multiple images (NO crop here)
+      const selected = await ImageCropPicker.openPicker({
+        multiple: true,
+        mediaType: "photo",
+        maxFiles: remaining,
+      });
+
+      if (!selected || selected.length === 0) return;
+
+      const croppedResults = [];
+
+      // STEP 2: Crop each image ONE BY ONE
+      for (const img of selected) {
+        const cropped = await ImageCropPicker.openCropper({
+          path: img.path,
+          width: 800,
+          height: 800,
+          compressImageQuality: 0.8,
+        });
+
+        croppedResults.push(cropped.path);
+      }
+
+      setImages(prev => [...prev, ...croppedResults]);
+
+    } catch (error) {
+      if (error?.code !== "E_PICKER_CANCELLED") {
+        console.error("Image picker error:", error);
+        Alert.alert("Error", "Image selection failed");
+      }
+    }
   };
+
+
 
   // ✅ Upload all images under 'products/{productId}/'
   const uploadImagesToStorage = async (productId) => {
     const urls = [];
+
     for (let i = 0; i < images.length; i++) {
-      const filePath = await getFilePath(images[i]);
       const fileName = `${Date.now()}_${i}.jpg`;
       const storageRef = ref(storage, `products/${productId}/${fileName}`);
-      const img = await fetch(images[i]);
-      const blob = await img.blob();
+
+      const uploadTask = uploadBytesResumable(storageRef, {
+        uri: images[i],
+        type: "image/jpeg",
+        name: fileName,
+      });
 
       await new Promise((resolve, reject) => {
-        const uploadTask = uploadBytesResumable(storageRef, blob);
         uploadTask.on(
           "state_changed",
           (snapshot) => {
             const progress = Math.round(
               (snapshot.bytesTransferred / snapshot.totalBytes) * 100
             );
-            setUploadProgress((prev) => ({ ...prev, [i]: progress }));
+            setUploadProgress(prev => ({ ...prev, [i]: progress }));
           },
-          (error) => {
-            console.error("Upload error:", error);
-            reject(error);
-          },
+          reject,
           async () => {
-            const downloadURL = await getDownloadURL(storageRef);
-            urls.push(downloadURL);
+            const url = await getDownloadURL(storageRef);
+            urls.push(url);
             resolve();
           }
         );
       });
     }
+
     return urls;
   };
+
 
   const saveProduct = async () => {
     if (!title || !price) {
@@ -198,7 +237,7 @@ export default function AddProductPage({ navigation }) {
                 <TextInput placeholder="SKU" placeholderTextColor="#C0C0C0" style={styles.input} value={sku} onChangeText={setSku} />
                 <TextInput placeholder="Weight (gms)" placeholderTextColor="#C0C0C0" style={styles.input} keyboardType="numeric" value={weight} onChangeText={setWeight} />
 
-                <Text style={styles.label}>Size</Text>
+                {/* <Text style={styles.label}>Size</Text>
                 <Picker selectedValue={size} onValueChange={(val) => setSize(val)} style={styles.picker}>
                   <Picker.Item label="Small" value="S" color="#000" />
                   <Picker.Item label="Medium" value="M" color="#000" />
@@ -210,20 +249,30 @@ export default function AddProductPage({ navigation }) {
                   <Picker.Item label="Red" value="Red" color="#000" />
                   <Picker.Item label="Blue" value="Blue" color="#000" />
                   <Picker.Item label="Black" value="Black" color="#000" />
-                </Picker>
-
-                <ScrollView horizontal>
+                </Picker> */}
+                <View style={styles.uploadImages}>
                   {images.map((img, index) => (
-                    <View key={index} style={{ alignItems: "center", marginRight: 10 }}>
+                    <View key={index} style={{ alignItems: "center", marginRight: 15 }}>
                       <Image source={{ uri: img }} style={styles.previewImage} />
-                      {uploadProgress[index] ? (
-                        <Text style={{ fontSize: 12, marginTop: 4 }}>
-                          {uploadProgress[index]}%
+
+                      <TouchableOpacity
+                        style={styles.closeBtn}
+                        onPress={() =>
+                          setImages(prev => prev.filter((_, i) => i !== index))
+                        }
+                      >
+                        <Text style={{ color: "white", fontSize: 20, fontWeight: 900 }}>
+                          X
                         </Text>
-                      ) : null}
+                      </TouchableOpacity>
+
+                      {uploadProgress[index] !== undefined && (
+                        <Text style={{ fontSize: 12 }}>{uploadProgress[index]}%</Text>
+                      )}
                     </View>
                   ))}
-                </ScrollView>
+                </View>
+
 
                 <TouchableOpacity style={styles.uploadBtn} onPress={handleImagePick}>
                   <Text style={styles.uploadText}>+ Upload Images</Text>
@@ -253,9 +302,11 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: "#ddd", borderRadius: 10, padding: 12, marginBottom: 15, backgroundColor: "#f9f9f9" },
   label: { marginBottom: 5, fontWeight: "bold", color: "#333" },
   picker: { backgroundColor: "#f9f9f9", marginBottom: 15 },
+  uploadImages: { width: '100%', display: 'flex', flexDirection: 'row', flexWrap: 'wrap', rowGap: 25, marginTop:20 },
   uploadBtn: { borderWidth: 1, borderColor: "#aaa", borderRadius: 10, padding: 12, alignItems: "center", backgroundColor: "#f1f1f1" },
   uploadText: { color: "#333" },
-  previewImage: { width: 80, height: 80, marginRight: 10, borderRadius: 10, marginBottom: 10 },
+  closeBtn: { position: 'absolute', top: -10, right: 0, borderWidth: 1, backgroundColor: 'red', borderRadius: '50%', paddingHorizontal: 8, display:'flex', justifyContent:'center', alignItems:'center' },
+  previewImage: { width: 100, height: 100, marginRight: 10, borderRadius: 10, marginBottom: 10, position: 'relative' },
   saveBtn: { backgroundColor: "#000", padding: 17, borderTopRightRadius: 35, borderBottomRightRadius: 35, alignItems: "center", width: "50%" },
   saveText: { color: "#fff", fontWeight: "bold" },
   backBtn: { backgroundColor: "#eee", padding: 17, borderTopLeftRadius: 35, borderBottomLeftRadius: 35, alignItems: "center", width: "50%" },
